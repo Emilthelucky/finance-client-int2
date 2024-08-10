@@ -103,22 +103,43 @@ const AccountChart = ({ userName }) => {
             )
             const transactions = response.data.data
 
+            // Group transactions by account and sort by date
             const accountData = {}
             const transactionTypeCounts = {}
+
+            transactions.sort((a, b) => new Date(a.date) - new Date(b.date))
 
             transactions.forEach((transaction) => {
                 const accountName = transaction.account.name
                 const transactionType = transaction.transactionType
+                const transactionDate = formatDateTime(transaction.date)
 
                 if (!accountData[accountName]) {
+                    // Ensure createdAt is a valid date before formatting
+                    const accountCreatedAt = new Date(
+                        transaction.account.createdAt
+                    )
+                    const formattedCreatedAt = isNaN(accountCreatedAt.getTime())
+                        ? 'Unknown Date'
+                        : formatDateTime(accountCreatedAt)
+
+                    // Initialize account data with initial balance
                     accountData[accountName] = {
-                        labels: [],
-                        data: [],
-                        balance: transaction.account.balance,
+                        labels: [formattedCreatedAt],
+                        data: [
+                            transaction.account.initialBalance ||
+                                transaction.account.balance ||
+                                0,
+                        ],
                     }
                 }
 
-                let updatedBalance = accountData[accountName].balance
+                // Update balance based on transaction type
+                let updatedBalance =
+                    accountData[accountName].data[
+                        accountData[accountName].data.length - 1
+                    ]
+
                 if (
                     transaction.transactionType === 'Payment' ||
                     transaction.transactionType === 'Withdrawal' ||
@@ -132,18 +153,54 @@ const AccountChart = ({ userName }) => {
                     updatedBalance += transaction.amount
                 }
 
-                accountData[accountName].balance = updatedBalance
-                accountData[accountName].labels.push(
-                    formatDateTime(transaction.date)
-                )
-                accountData[accountName].data.push(updatedBalance)
-
-                if (!transactionTypeCounts[transactionType]) {
-                    transactionTypeCounts[transactionType] = 0
+                // Check if the date already exists in the labels
+                if (accountData[accountName].labels.includes(transactionDate)) {
+                    // Update the balance for the existing date
+                    const index =
+                        accountData[accountName].labels.indexOf(transactionDate)
+                    accountData[accountName].data[index] = updatedBalance
+                } else {
+                    // Add new data point for the updated balance
+                    accountData[accountName].labels.push(transactionDate)
+                    accountData[accountName].data.push(updatedBalance)
                 }
-                transactionTypeCounts[transactionType] += 1
+
+                // Handle transaction type counts for pie chart
+                if (!transactionTypeCounts[transaction.transactionType]) {
+                    transactionTypeCounts[transaction.transactionType] = 0
+                }
+                transactionTypeCounts[transaction.transactionType] += 1
             })
 
+            // Synchronize labels across all accounts
+            const allDates = new Set()
+            Object.values(accountData).forEach((account) => {
+                account.labels.forEach((date) => allDates.add(date))
+            })
+            const sortedDates = Array.from(allDates).sort(
+                (a, b) => new Date(a) - new Date(b)
+            )
+
+            Object.keys(accountData).forEach((accountName) => {
+                const account = accountData[accountName]
+                let lastBalance = account.data[0]
+
+                sortedDates.forEach((date) => {
+                    if (!account.labels.includes(date)) {
+                        account.labels.push(date)
+                        account.data.push(lastBalance)
+                    } else {
+                        lastBalance = account.data[account.labels.indexOf(date)]
+                    }
+                })
+
+                account.labels.sort((a, b) => new Date(a) - new Date(b))
+                account.data = account.labels.map(
+                    (label) => account.data[account.labels.indexOf(label)]
+                )
+            })
+
+            // Prepare datasets for line chart
             const datasets = Object.keys(accountData).map((accountName) => {
                 const borderColor = generateRandomColor() + ', 1)'
                 const backgroundColor = generateRandomColor() + ', 0.5)'
@@ -160,10 +217,11 @@ const AccountChart = ({ userName }) => {
             })
 
             setChartData({
-                labels: Object.values(accountData)[0]?.labels || [],
+                labels: sortedDates,
                 datasets: datasets,
             })
 
+            // Prepare data for pie chart
             const pieLabels = Object.keys(transactionTypeCounts)
             const pieValues = Object.values(transactionTypeCounts)
             const pieColors = pieLabels.map(
@@ -180,6 +238,7 @@ const AccountChart = ({ userName }) => {
                 ],
             })
 
+            // Filter today's transactions
             const todaysTransactions = transactions.filter((transaction) => {
                 const transactionDate = new Date(transaction.date)
                 const today = new Date()
@@ -204,7 +263,7 @@ const AccountChart = ({ userName }) => {
 
     if (loading) {
         return (
-            <div className="grid">
+            <div className="gird-white">
                 <PanelSidebar />
                 <div className="spinner-center">
                     <Spinner

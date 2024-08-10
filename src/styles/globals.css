@@ -170,7 +170,7 @@ a{
 .gird-white{
   display: grid;
   grid-template-columns: auto 1fr;
-  background: white;
+  background: rgb(255, 255, 255);
 }
 /* ------------------------------------------------- */
 
