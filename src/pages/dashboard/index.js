@@ -14,6 +14,8 @@ import {
 } from 'chart.js'
 import { Spinner } from '@chakra-ui/react'
 import PanelSidebar from '@/components/Sidebar/Sidebar'
+import { useContext } from 'react'
+import { AuthContext } from '../_app'
 
 const API_URL = process.env.API_URL
 
@@ -28,7 +30,8 @@ ChartJS.register(
     ArcElement
 )
 
-const AccountChart = ({ userName }) => {
+const AccountChart = () => {
+    const { user } = useContext(AuthContext)
     const [chartData, setChartData] = useState({
         labels: [],
         datasets: [],
@@ -93,7 +96,7 @@ const AccountChart = ({ userName }) => {
         try {
             const { startDate, endDate } = getDateRange(dateRange)
             const response = await axios.get(
-                `${API_URL}/transaction/sillyemill`,
+                `${API_URL}/transaction/${user?.username}`,
                 {
                     params: {
                         startDate: startDate.toISOString(),
@@ -103,7 +106,6 @@ const AccountChart = ({ userName }) => {
             )
             const transactions = response.data.data
 
-            // Group transactions by account and sort by date
             const accountData = {}
             const transactionTypeCounts = {}
 
@@ -114,8 +116,14 @@ const AccountChart = ({ userName }) => {
                 const transactionType = transaction.transactionType
                 const transactionDate = formatDateTime(transaction.date)
 
+                // Count transaction types
+                if (transactionTypeCounts[transactionType]) {
+                    transactionTypeCounts[transactionType]++
+                } else {
+                    transactionTypeCounts[transactionType] = 1
+                }
+
                 if (!accountData[accountName]) {
-                    // Ensure createdAt is a valid date before formatting
                     const accountCreatedAt = new Date(
                         transaction.account.createdAt
                     )
@@ -123,18 +131,12 @@ const AccountChart = ({ userName }) => {
                         ? 'Unknown Date'
                         : formatDateTime(accountCreatedAt)
 
-                    // Initialize account data with initial balance
                     accountData[accountName] = {
                         labels: [formattedCreatedAt],
-                        data: [
-                            transaction.account.initialBalance ||
-                                transaction.account.balance ||
-                                0,
-                        ],
+                        data: [transaction.account.initialBalance || 0],
                     }
                 }
 
-                // Update balance based on transaction type
                 let updatedBalance =
                     accountData[accountName].data[
                         accountData[accountName].data.length - 1
@@ -153,26 +155,12 @@ const AccountChart = ({ userName }) => {
                     updatedBalance += transaction.amount
                 }
 
-                // Check if the date already exists in the labels
-                if (accountData[accountName].labels.includes(transactionDate)) {
-                    // Update the balance for the existing date
-                    const index =
-                        accountData[accountName].labels.indexOf(transactionDate)
-                    accountData[accountName].data[index] = updatedBalance
-                } else {
-                    // Add new data point for the updated balance
+                if (transactionDate !== accountData[accountName].labels[0]) {
                     accountData[accountName].labels.push(transactionDate)
                     accountData[accountName].data.push(updatedBalance)
                 }
-
-                // Handle transaction type counts for pie chart
-                if (!transactionTypeCounts[transaction.transactionType]) {
-                    transactionTypeCounts[transaction.transactionType] = 0
-                }
-                transactionTypeCounts[transaction.transactionType] += 1
             })
 
-            // Synchronize labels across all accounts
             const allDates = new Set()
             Object.values(accountData).forEach((account) => {
                 account.labels.forEach((date) => allDates.add(date))
@@ -200,7 +188,6 @@ const AccountChart = ({ userName }) => {
                 )
             })
 
-            // Prepare datasets for line chart
             const datasets = Object.keys(accountData).map((accountName) => {
                 const borderColor = generateRandomColor() + ', 1)'
                 const backgroundColor = generateRandomColor() + ', 0.5)'
@@ -238,7 +225,6 @@ const AccountChart = ({ userName }) => {
                 ],
             })
 
-            // Filter today's transactions
             const todaysTransactions = transactions.filter((transaction) => {
                 const transactionDate = new Date(transaction.date)
                 const today = new Date()
@@ -259,7 +245,7 @@ const AccountChart = ({ userName }) => {
 
     useEffect(() => {
         fetchData()
-    }, [userName, dateRange])
+    }, [user, dateRange])
 
     if (loading) {
         return (

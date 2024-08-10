@@ -16,21 +16,33 @@ export const Navigation = ({
 
     return (
         <div className="my-products-navigation">
-            <div
-                className="my-products-first flex gap-20 aic jcc cursor-pointer"
-                onClick={() => {
-                    back && router.push(`${back}`)
-                }}
-            >
-                {icoF ? (
-                    <div className="back-icon flex aic jcc">
-                        <img src={icoF}></img>
-                    </div>
-                ) : null}
-                {mainTitle && <p>{mainTitle}</p>}
-                {icoS && <img src={icoS}></img>}
-                {title && <p>{title}</p>}
-            </div>
+            {!title ? (
+                <div
+                    className="my-products-first-notitle flex gap-20 aic jcc cursor-pointer"
+                    onClick={() => {
+                        back && router.push(`${back}`)
+                    }}
+                >
+                    {mainTitle && <p className="p">{mainTitle}</p>}
+                </div>
+            ) : (
+                <div
+                    className="my-products-first flex gap-20 aic jcc cursor-pointer"
+                    onClick={() => {
+                        back && router.push(`${back}`)
+                    }}
+                >
+                    {icoF ? (
+                        <div className="back-icon flex aic jcc">
+                            <img src={icoF}></img>
+                        </div>
+                    ) : null}
+                    {mainTitle && <p>{mainTitle}</p>}
+                    {icoS && <img src={icoS}></img>}
+                    {title && <p>{title}</p>}
+                </div>
+            )}
+
             <div className="my-products-second">
                 {href ? (
                     <button
