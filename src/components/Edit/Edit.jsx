@@ -46,14 +46,24 @@ const Edit = ({
             setError(null)
 
             try {
+                const data = {
+                    operation,
+                    field,
+                    value,
+                    [endPointType]: selectedItems,
+                }
+
+                // Eğer entityType 'Accounts' veya 'Transactions' değilse, sent: false ekle
+                if (
+                    entityType !== 'Accounts' &&
+                    entityType !== 'Transactions'
+                ) {
+                    data.sent = false
+                }
+
                 const response = await axios.post(
                     `${API_URL}/${updateEndpoint}`,
-                    {
-                        operation,
-                        field,
-                        value,
-                        [endPointType]: selectedItems,
-                    }
+                    data
                 )
 
                 if (response.status === 200) {
@@ -83,9 +93,19 @@ const Edit = ({
             setError(null)
 
             try {
+                const data = { [endPointType]: selectedItems }
+
+                // Eğer entityType 'Accounts' veya 'Transactions' değilse, sent: false ekle
+                if (
+                    entityType !== 'Accounts' &&
+                    entityType !== 'Transactions'
+                ) {
+                    data.sent = false
+                }
+
                 const response = await axios.post(
                     `${API_URL}/${deleteEndpoint}`,
-                    { [endPointType]: selectedItems }
+                    data
                 )
 
                 if (response.status === 200) {
@@ -115,7 +135,11 @@ const Edit = ({
 
     // Define the allowed fields
     const allowedFields =
-        entityType == 'Accounts' ? ['type'] : ['amount', 'transactionType']
+        entityType === 'Accounts'
+            ? ['type']
+            : entityType === 'Transactions'
+            ? ['amount', 'transactionType']
+            : ['reportType', 'reportTitle']
 
     return (
         <Modal isOpen={isOpen} onClose={onClose}>
